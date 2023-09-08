@@ -15,6 +15,8 @@ import java.awt.Font;
 import javax.swing.JComboBox;
 import javax.swing.DefaultComboBoxModel;
 import java.text.Format;
+import java.util.Calendar;
+import java.util.Date;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -254,6 +256,7 @@ public class ReservasView extends JFrame {
 		txtFechaEntrada.setDateFormatString("yyyy-MM-dd");
 		txtFechaEntrada.setFont(new Font("Roboto", Font.PLAIN, 18));
 		panel.add(txtFechaEntrada);
+		
 
 		txtFechaSalida = new JDateChooser();
 		txtFechaSalida.getCalendarButton().setIcon(new ImageIcon(ReservasView.class.getResource("/imagenes/icon-reservas.png")));
@@ -265,6 +268,13 @@ public class ReservasView extends JFrame {
 		txtFechaSalida.addPropertyChangeListener(new PropertyChangeListener() {
 			public void propertyChange(PropertyChangeEvent evt) {
 				//Activa el evento, después del usuario seleccionar las fechas se debe calcular el valor de la reserva
+				if ("date".equals(evt.getPropertyName())) {
+					Date sqldate = new java.sql.Date(txtFechaSalida.getDate().getTime());
+	                String day =txtFechaSalida.getDate().toString();
+	                System.out.println(sqldate);
+	                String[] arrOfStr = day.split(" ", 10);
+	                System.out.println(arrOfStr[2]);
+	            }
 			}
 		});
 		txtFechaSalida.setDateFormatString("yyyy-MM-dd");

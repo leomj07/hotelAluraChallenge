@@ -4,6 +4,9 @@ import java.awt.EventQueue;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+
+import factory.CrearConexionFactory;
+
 import java.awt.Color;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -17,6 +20,14 @@ import javax.swing.SwingConstants;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import javax.swing.JButton;
+import java.awt.Cursor;
 
 public class Login extends JFrame {
 
@@ -195,6 +206,8 @@ public class Login extends JFrame {
 				Login();
 			}
 		});
+		
+		
 		btnLogin.setBackground(SystemColor.textHighlight);
 		btnLogin.setBounds(65, 431, 122, 44);
 		panel.add(btnLogin);
@@ -232,21 +245,37 @@ public class Login extends JFrame {
 		header.setBounds(0, 0, 784, 36);
 		panel.add(header);
 		header.setLayout(null);
+	
+		
 	}
 	
 	private void Login() {
-		 String Usuario= "admin";
-	     String Contraseña="admin";
 
-	        String contrase=new String (txtContrasena.getPassword());
+	     String Usuario = txtUsuario.getText();
+	     String password = String.valueOf(txtContrasena.getPassword());
+	     	
+		try {
+				Connection conn = new CrearConexionFactory().recuperaConexion();		
+				PreparedStatement stm = conn.prepareStatement("SELECT id FROM usuario WHERE usuario = ? and password = ?");
+			
+				stm.setString(1, Usuario);
+				stm.setString(2, password);
+			
+				ResultSet set = stm.executeQuery();
 
-	        if(txtUsuario.getText().equals(Usuario) && contrase.equals(Contraseña)){
-	            MenuUsuario menu = new MenuUsuario();
-	            menu.setVisible(true);
-	            dispose();	 
-	        }else {
-	            JOptionPane.showMessageDialog(this, "Usuario o Contraseña no válidos");
-	        }
+		        if(set.next()){
+		            MenuUsuario menu = new MenuUsuario();
+		            menu.setVisible(true);
+		            dispose();	 
+		        }else {
+		            JOptionPane.showMessageDialog(this, "Usuario o Contraseña no válidos");
+		        }  
+		        
+			    System.out.println("Cerrando");
+			    conn.close(); 
+		}catch(SQLException e) {
+			e.printStackTrace();
+		}
 	} 
 	 private void headerMousePressed(java.awt.event.MouseEvent evt) {
 	        xMouse = evt.getX();
