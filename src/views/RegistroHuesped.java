@@ -7,6 +7,9 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.JTextField;
 import java.awt.Color;
 import com.toedter.calendar.JDateChooser;
+
+import factory.CrearConexionFactory;
+
 import javax.swing.JComboBox;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JLabel;
@@ -19,7 +22,14 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.Format;
+import java.util.HashMap;
+import java.util.Map;
 import java.awt.event.ActionEvent;
 import java.awt.Toolkit;
 import javax.swing.SwingConstants;
@@ -37,6 +47,8 @@ public class RegistroHuesped extends JFrame {
 	private JComboBox<Format> txtNacionalidad;
 	private JLabel labelExit;
 	private JLabel labelAtras;
+	private Map<String, String> huesped = new HashMap<>();
+	private Date sqldate;
 	int xMouse, yMouse;
 
 	/**
@@ -46,7 +58,7 @@ public class RegistroHuesped extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					RegistroHuesped frame = new RegistroHuesped();
+					RegistroHuesped frame = new RegistroHuesped(0);
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -58,7 +70,7 @@ public class RegistroHuesped extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public RegistroHuesped() {
+	public RegistroHuesped(int idReserva) {
 		
 		setIconImage(Toolkit.getDefaultToolkit().getImage(RegistroHuesped.class.getResource("/imagenes/lOGO-50PX.png")));
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -211,10 +223,11 @@ public class RegistroHuesped extends JFrame {
 		txtNreserva.setBackground(Color.WHITE);
 		txtNreserva.setBorder(javax.swing.BorderFactory.createEmptyBorder());
 		contentPane.add(txtNreserva);
+		txtNreserva.setText(String.valueOf(idReserva));
 		
 		JSeparator separator_1_2 = new JSeparator();
 		separator_1_2.setBounds(560, 170, 289, 2);
-		separator_1_2.setForeground(new Color(12, 138, 199));
+		separator_1_2.setForeground(new Color(12, 138, 199)); 
 		separator_1_2.setBackground(new Color(12, 138, 199));
 		contentPane.add(separator_1_2);
 		
@@ -252,9 +265,22 @@ public class RegistroHuesped extends JFrame {
 		btnguardar.setBounds(723, 560, 122, 35);
 		btnguardar.addMouseListener(new MouseAdapter() {
 			@Override
-			public void mouseClicked(MouseEvent e) {
+			public void mouseClicked(MouseEvent e) {	
+				if (txtNombre.getText() != null && txtApellido.getText() != null && txtFechaN.getDate() != null && txtTelefono.getText() != null) {
+					sqldate = new java.sql.Date(txtFechaN.getDate().getTime());
+					huesped.put("NOMBRE", txtNombre.getText());
+					huesped.put("APELLIDOS", txtApellido.getText());
+					huesped.put("FECHA_NACIMIENTO", String.valueOf(sqldate));
+					huesped.put("NACIONALIDAD", String.valueOf(txtNacionalidad.getSelectedItem()));
+					huesped.put("TELEFONO", txtTelefono.getText());
+					huesped.put("idReserva", String.valueOf(txtNreserva.getText()));
+					gHuesped(huesped);
+				} else {
+					JOptionPane.showMessageDialog(null, "Debes llenar todos los campos.");
+				}
 			}
 		});
+		
 		btnguardar.setLayout(null);
 		btnguardar.setBackground(new Color(12, 138, 199));
 		contentPane.add(btnguardar);
@@ -315,6 +341,26 @@ public class RegistroHuesped extends JFrame {
 		labelExit.setFont(new Font("Roboto", Font.PLAIN, 18));
 	}
 	
+	public void gHuesped(Map<String, String> m) {
+		try {
+			Connection con= new CrearConexionFactory().recuperaConexion();
+			Statement stm = con.createStatement();
+			stm.execute("INSERT INTO HUESPEDES(NOMBRE, APELLIDOS, FECHA_NACIMIENTO, NACIONALIDAD, TELEFONO, idReserva) VALUES('"
+			+m.get("NOMBRE")+"','"+m.get("APELLIDOS")+"','"+m.get("FECHA_NACIMIENTO")
+			+"','"+m.get("NACIONALIDAD")+"','"+m.get("TELEFONO")+"',"+m.get("idReserva")+")", stm.RETURN_GENERATED_KEYS);
+			
+			ResultSet rs = stm.getGeneratedKeys();
+			
+			while(rs.next()) {
+				JOptionPane.showMessageDialog(null, "El registro del huesped se realizo con éxito, el id de reserva es: "+rs.getInt(1));
+			}	
+			stm.close();
+			
+			
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
 	
 	//Código que permite mover la ventana por la pantalla según la posición de "x" y "y"	
 	 private void headerMousePressed(java.awt.event.MouseEvent evt) {

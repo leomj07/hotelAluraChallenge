@@ -10,18 +10,31 @@ import javax.swing.JOptionPane;
 import javax.swing.ImageIcon;
 import java.awt.Color;
 import javax.swing.JTextField;
+
+import com.mchange.v2.sql.filter.SynchronizedFilterDataSource;
 import com.toedter.calendar.JDateChooser;
+
+import factory.CrearConexionFactory;
+
 import java.awt.Font;
 import javax.swing.JComboBox;
 import javax.swing.DefaultComboBoxModel;
 import java.text.Format;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.Toolkit;
 import java.beans.PropertyChangeListener;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.beans.PropertyChangeEvent;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
@@ -39,8 +52,11 @@ public class ReservasView extends JFrame {
 	int xMouse, yMouse;
 	private JLabel labelExit;
 	private JLabel labelAtras;
+	private Date sqldate, sqldate1;
+	private Map<String, String> reserva = new HashMap<>();
+	public int idReserva;
 
-	/**
+	/** 
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
@@ -269,11 +285,16 @@ public class ReservasView extends JFrame {
 			public void propertyChange(PropertyChangeEvent evt) {
 				//Activa el evento, después del usuario seleccionar las fechas se debe calcular el valor de la reserva
 				if ("date".equals(evt.getPropertyName())) {
-					Date sqldate = new java.sql.Date(txtFechaSalida.getDate().getTime());
-	                String day =txtFechaSalida.getDate().toString();
-	                System.out.println(sqldate);
-	                String[] arrOfStr = day.split(" ", 10);
-	                System.out.println(arrOfStr[2]);
+						sqldate = new java.sql.Date(txtFechaSalida.getDate().getTime());
+						sqldate1 = new java.sql.Date(txtFechaEntrada.getDate().getTime());
+		                String day = sqldate.toString();
+		                String day1 = sqldate1.toString();
+		                String[] arrOfStr = day.split("-", 3);
+		                String[] arrOfStr1 = day1.split("-", 3);
+		                int intFechaSalida = Integer.valueOf(arrOfStr[2]);
+		                int intFechaEntrada = Integer.valueOf(arrOfStr1[2]);
+		                int vReserva = (intFechaSalida - intFechaEntrada)*700;
+		                txtValor.setText(String.valueOf(vReserva));
 	            }
 			}
 		});
@@ -286,13 +307,13 @@ public class ReservasView extends JFrame {
 		txtValor.setBackground(SystemColor.text);
 		txtValor.setHorizontalAlignment(SwingConstants.CENTER);
 		txtValor.setForeground(Color.BLACK);
-		txtValor.setBounds(78, 328, 43, 33);
+		txtValor.setBounds(78, 328, 279, 33);
 		txtValor.setEditable(false);
 		txtValor.setFont(new Font("Roboto Black", Font.BOLD, 17));
 		txtValor.setBorder(javax.swing.BorderFactory.createEmptyBorder());
 		panel.add(txtValor);
 		txtValor.setColumns(10);
-
+ 
 
 		txtFormaPago = new JComboBox();
 		txtFormaPago.setBounds(68, 417, 289, 38);
@@ -306,21 +327,70 @@ public class ReservasView extends JFrame {
 		btnsiguiente.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				if (ReservasView.txtFechaEntrada.getDate() != null && ReservasView.txtFechaSalida.getDate() != null) {		
-					RegistroHuesped registro = new RegistroHuesped();
-					registro.setVisible(true);
+				if (ReservasView.txtFechaEntrada.getDate() != null && ReservasView.txtFechaSalida.getDate() != null) {	
+					reserva.put("FECHA_ENTRADA", String.valueOf(sqldate1));
+					reserva.put("FECHA_SALIDA", String.valueOf(sqldate));
+					reserva.put("VALOR", String.valueOf(txtValor.getText()));
+					reserva.put("FORMA_PAGO", String.valueOf(txtFormaPago.getSelectedItem()));
+					gReserva(reserva);
 				} else {
 					JOptionPane.showMessageDialog(null, "Debes llenar todos los campos.");
 				}
 			}						
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				btnsiguiente.setBackground(new Color(0, 156, 223));
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {
+				btnsiguiente.setBackground(SystemColor.textHighlight);
+			}
 		});
 		btnsiguiente.setLayout(null);
 		btnsiguiente.setBackground(SystemColor.textHighlight);
 		btnsiguiente.setBounds(238, 493, 122, 35);
 		panel.add(btnsiguiente);
 		btnsiguiente.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+		
+		JLabel lblNewLabel = new JLabel("SIGUIENTE");
+		lblNewLabel.setForeground(SystemColor.controlLtHighlight);
+		lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		lblNewLabel.setHorizontalTextPosition(SwingConstants.CENTER);
+		lblNewLabel.setFont(new Font("Dialog", Font.PLAIN, 16));
+		lblNewLabel.setBounds(0, 0, 122, 35);
+		btnsiguiente.add(lblNewLabel);
 
+	}
+		
+	public int getIdReserva() {
+		return idReserva;
+	}
 
+	public void setIdReserva(int idReserva) {
+		this.idReserva = idReserva;
+	}
+
+	public void gReserva(Map<String, String> m) {
+		try {
+			Connection con= new CrearConexionFactory().recuperaConexion();
+			Statement stm = con.createStatement();
+			stm.execute("INSERT INTO RESERVAS(FECHA_ENTRADA, FECHA_SALIDA, VALOR, FORMA_PAGO) VALUES('"
+			+m.get("FECHA_ENTRADA")+"','"+m.get("FECHA_SALIDA")+"',"+m.get("VALOR")
+			+",'"+m.get("FORMA_PAGO")+"')", stm.RETURN_GENERATED_KEYS);
+			
+			ResultSet rs = stm.getGeneratedKeys();
+			
+			while(rs.next()) {
+				JOptionPane.showMessageDialog(null, "La reserva se realizo con éxito, el id de reserva es: "+rs.getInt(1));
+				RegistroHuesped registro = new RegistroHuesped(rs.getInt(1));
+				registro.setVisible(true);
+			}	
+			stm.close();
+			
+			
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
 	}
 		
 	//Código que permite mover la ventana por la pantalla según la posición de "x" y "y"	
