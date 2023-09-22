@@ -32,6 +32,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.Toolkit;
 import java.beans.PropertyChangeListener;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -372,21 +373,33 @@ public class ReservasView extends JFrame {
 
 	public void gReserva(Map<String, String> m) {
 		try {
-			Connection con= new CrearConexionFactory().recuperaConexion();
-			Statement stm = con.createStatement();
-			stm.execute("INSERT INTO RESERVAS(FECHA_ENTRADA, FECHA_SALIDA, VALOR, FORMA_PAGO) VALUES('"
-			+m.get("FECHA_ENTRADA")+"','"+m.get("FECHA_SALIDA")+"',"+m.get("VALOR")
-			+",'"+m.get("FORMA_PAGO")+"')", stm.RETURN_GENERATED_KEYS);
+			final Connection con= new CrearConexionFactory().recuperaConexion();
+			try(con){
+				con.setAutoCommit(false);
+				final PreparedStatement stm = con.prepareStatement("INSERT INTO RESERVAS(FECHA_ENTRADA, FECHA_SALIDA, VALOR, FORMA_PAGO) VALUES("
+						+ "?, ?, ?, ?)", 
+						Statement.RETURN_GENERATED_KEYS);
 			
-			ResultSet rs = stm.getGeneratedKeys();
-			
-			while(rs.next()) {
-				JOptionPane.showMessageDialog(null, "La reserva se realizo con éxito, el id de reserva es: "+rs.getInt(1));
-				RegistroHuesped registro = new RegistroHuesped(rs.getInt(1));
-				registro.setVisible(true);
-			}	
-			stm.close();
-			
+				try(stm){
+					stm.setString(1, m.get("FECHA_ENTRADA"));
+					stm.setString(2, m.get("FECHA_SALIDA"));
+					stm.setInt(3,Integer.valueOf(m.get("VALOR")));
+					stm.setString(4, m.get("FORMA_PAGO"));
+					stm.execute();
+					ResultSet rs = stm.getGeneratedKeys();
+					
+					while(rs.next()) {
+						JOptionPane.showMessageDialog(null, "La reserva se realizo con éxito, el id de reserva es: "+rs.getInt(1));
+						RegistroHuesped registro = new RegistroHuesped(rs.getInt(1));
+						registro.setVisible(true);
+					}	
+					 
+					con.commit();
+				}catch(Exception e) {
+					con.rollback();
+		
+				}		
+			}
 			
 		} catch (SQLException e) {
 			throw new RuntimeException(e);

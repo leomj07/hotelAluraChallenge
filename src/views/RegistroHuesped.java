@@ -24,6 +24,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -343,19 +344,36 @@ public class RegistroHuesped extends JFrame {
 	
 	public void gHuesped(Map<String, String> m) {
 		try {
+			System.out.println(m.get("NOMBRE"));
 			Connection con= new CrearConexionFactory().recuperaConexion();
-			Statement stm = con.createStatement();
-			stm.execute("INSERT INTO HUESPEDES(NOMBRE, APELLIDOS, FECHA_NACIMIENTO, NACIONALIDAD, TELEFONO, idReserva) VALUES('"
-			+m.get("NOMBRE")+"','"+m.get("APELLIDOS")+"','"+m.get("FECHA_NACIMIENTO")
-			+"','"+m.get("NACIONALIDAD")+"','"+m.get("TELEFONO")+"',"+m.get("idReserva")+")", stm.RETURN_GENERATED_KEYS);
+			con.setAutoCommit(false);
+			PreparedStatement stm = con.prepareStatement("INSERT INTO HUESPEDES(NOMBRE, APELLIDOS, FECHA_NACIMIENTO, NACIONALIDAD, TELEFONO, idReserva ) "
+					+ " VALUES( ?, ?, ?, ?, ?, ? )", 
+					Statement.RETURN_GENERATED_KEYS);
 			
-			ResultSet rs = stm.getGeneratedKeys();
+			stm.setString(1, m.get("NOMBRE"));
+			stm.setString(2, m.get("APELLIDOS"));
+			stm.setString(3, m.get("FECHA_NACIMIENTO"));
+			stm.setString(4, m.get("NACIONALIDAD"));
+			stm.setString(5, m.get("TELEFONO"));
+			stm.setInt(6,Integer.valueOf(m.get("idReserva")));
+			stm.execute();
 			
-			while(rs.next()) {
-				JOptionPane.showMessageDialog(null, "El registro del huesped se realizo con éxito, el id de reserva es: "+rs.getInt(1));
-			}	
+			try {
+				
+				ResultSet rs = stm.getGeneratedKeys();
+				
+				while(rs.next()) {				
+					JOptionPane.showMessageDialog(null, "El registro del huesped se realizo con éxito, el id de reserva es: "+m.get("idReserva"));	
+				}	
+				
+				con.commit();
+			}catch (Exception e){
+				con.rollback();
+			}
+			
 			stm.close();
-			
+			con.close();			
 			
 		} catch (SQLException e) {
 			throw new RuntimeException(e);

@@ -348,15 +348,25 @@ public class Busqueda extends JFrame {
 		if(i == 0) {
 			try {
 				Connection con= new CrearConexionFactory().recuperaConexion();
-				Statement stm = con.createStatement();
-				stm.execute("UPDATE RESERVAS SET FECHA_ENTRADA ='"+ m.get("FECHA_ENTRADA")+"', FECHA_SALIDA ='"+
-				m.get("FECHA_SALIDA")+"',VALOR="+Integer.valueOf(m.get("VALOR"))+", FORMA_PAGO= '"
-				+m.get("FORMA_PAGO")+"' WHERE ID ="+m.get("ID")+";");
+				PreparedStatement pt = con.prepareStatement("UPDATE RESERVAS SET"
+				+" FECHA_ENTRADA =?"
+				+", FECHA_SALIDA = ?"
+				+", VALOR= ?"
+				+", FORMA_PAGO= ?"
+				+" WHERE ID = ?");
 				
-				Integer actualizado = stm.getUpdateCount();			
+				pt.setString(1, m.get("FECHA_ENTRADA"));
+				pt.setString(2, m.get("FECHA_SALIDA"));
+				pt.setString(3, m.get("VALOR"));
+				pt.setString(4, m.get("FORMA_PAGO"));
+				pt.setInt(5,Integer.valueOf(m.get("ID")));
+				
+				pt.execute();
+				
+				Integer actualizado = pt.getUpdateCount();			
 				System.out.println("Actualizado "+ actualizado);
 				 
-				stm.close();
+				pt.close();
 				
 				
 			} catch (SQLException e) {
@@ -364,16 +374,31 @@ public class Busqueda extends JFrame {
 			}
 		}else {
 			try {
+				System.out.println(m.get("ID"));
 				Connection con= new CrearConexionFactory().recuperaConexion();
-				Statement stm = con.createStatement();
-				stm.execute("UPDATE HUESPEDES SET NOMBRE ='"+ m.get("NOMBRE")+"', APELLIDOS ='"+m.get("APELLIDOS")+
-						"', NACIONALIDAD='"+m.get("NACIONALIDAD")+"', TELEFONO = '"+m.get("TELEFONO")+
-						"', idReserva ="+m.get("idReserva")+" WHERE ID ="+m.get("ID")+";");
+				PreparedStatement pr = con.prepareStatement("UPDATE HUESPEDES SET"
+						+ " NOMBRE = ? "
+						+ ", APELLIDOS = ?"
+						+ ", FECHA_NACIMIENTO = ? "
+						+ ", NACIONALIDAD = ? "
+						+ ", TELEFONO = ? "
+						+ ", idReserva = ? "
+						+ " WHERE ID = ?; ");
 				
-				Integer actualizado = stm.getUpdateCount();			
+				pr.setString(1, m.get("NOMBRE"));
+				pr.setString(2, m.get("APELLIDOS"));
+				pr.setString(3, m.get("FECHA_NACIMIENTO"));
+				pr.setString(4, m.get("NACIONALIDAD"));
+				pr.setString(5, m.get("TELEFONO"));
+				pr.setInt(6, Integer.valueOf(m.get("idReserva")));
+				pr.setInt(7, Integer.valueOf(m.get("ID")));
+	
+				pr.execute();
+				
+				Integer actualizado = pr.getUpdateCount();		
 				System.out.println("Actualizado "+ actualizado);
 				 
-				stm.close();
+				pr.close();
 				
 				
 			} catch (SQLException e) {
@@ -383,38 +408,53 @@ public class Busqueda extends JFrame {
 		
 	}
 	
-	public void eliminar(String e, Integer i) {
+	public void eliminar(String id, Integer i) {
 		if(i == 0) {
 			try {
 				for (int row = 0; row < tbReservas.getRowCount(); row++) {
 		            modelo.removeRow(row);
 		        }
-				
-				System.out.println(e);
-				Connection con = new CrearConexionFactory().recuperaConexion();
-				PreparedStatement stm = con.prepareStatement("DELETE FROM RESERVAS WHERE id = ?");
-				stm.setString(1, e);
-				stm.execute();
-			    Integer Eliminado = stm.getUpdateCount();
-			    System.out.println("Eliminado "+ Eliminado);
-			    con.close();
-			} catch (SQLException e1) {
-				e1.printStackTrace();
+					System.out.println(id);
+					final Connection con = new CrearConexionFactory().recuperaConexion();
+					try(con){
+						con.setAutoCommit(false);
+						final PreparedStatement stm = con.prepareStatement("DELETE FROM RESERVAS WHERE id = ?");			
+						try(stm){
+							con.setAutoCommit(false);
+							stm.setString(1, id);
+							stm.execute();
+						    Integer Eliminado = stm.getUpdateCount();
+						    JOptionPane.showMessageDialog(null, "El usuario se elimino con exito con éxito, el id es: "+ id);
+						    System.out.println("Eliminado "+ Eliminado);
+						    con.commit();
+						}catch(Exception e) {
+							con.rollback();
+						}
+					}
+			} catch (SQLException e) {
+				e.printStackTrace();
 			}
 		}else {
 			try {
 				for (int row = 0; row < tbHuespedes.getRowCount(); row++) {
 		            modeloHuesped.removeRow(row);
 		        }
-				
-				System.out.println(e);
-				Connection con = new CrearConexionFactory().recuperaConexion();
-				PreparedStatement stm = con.prepareStatement("DELETE FROM HUESPEDES WHERE id = ?");
-				stm.setString(1, e);
-				stm.execute();
-			    Integer Eliminado = stm.getUpdateCount();
-			    System.out.println("Eliminado "+ Eliminado);
-			    con.close();
+					System.out.println(id);
+					final Connection con = new CrearConexionFactory().recuperaConexion();
+					try(con){
+						con.setAutoCommit(false);
+						final PreparedStatement stm = con.prepareStatement("DELETE FROM HUESPEDES WHERE id = ?");
+						try(stm){
+							stm.setString(1, id);
+							stm.execute();
+						    Integer Eliminado = stm.getUpdateCount();
+						    JOptionPane.showMessageDialog(null, "El usuario se elimino con exito con éxito, el id es: "+ id);
+						    System.out.println("Eliminado "+ Eliminado);
+						    con.commit();
+						}catch (Exception e) {
+							con.rollback();
+						}
+					}
 			} catch (SQLException e1) {
 				e1.printStackTrace();
 			}
@@ -430,7 +470,8 @@ public class Busqueda extends JFrame {
 		            modelo.removeRow(row);
 		        }
 				Connection con = new CrearConexionFactory().recuperaConexion();
-				PreparedStatement stm = con.prepareStatement("SELECT ID, FECHA_ENTRADA, FECHA_SALIDA, VALOR, FORMA_PAGO FROM RESERVAS WHERE id = ?");
+				PreparedStatement stm = con.prepareStatement("SELECT ID, FECHA_ENTRADA, FECHA_SALIDA, VALOR, FORMA_PAGO FROM RESERVAS"
+						+ " WHERE id = ?");
 				stm.setString(1, b);
 				ResultSet set = stm.executeQuery();
 								
@@ -449,7 +490,8 @@ public class Busqueda extends JFrame {
 		        }
 				
 				Connection con = new CrearConexionFactory().recuperaConexion();
-				PreparedStatement stm = con.prepareStatement("SELECT ID, NOMBRE, APELLIDOS, FECHA_NACIMIENTO, NACIONALIDAD, TELEFONO, idReserva FROM HUESPEDES WHERE id = ?");
+				PreparedStatement stm = con.prepareStatement("SELECT ID, NOMBRE, APELLIDOS, FECHA_NACIMIENTO, NACIONALIDAD, TELEFONO, idReserva "
+						+ "FROM HUESPEDES WHERE APELLIDOS = ?");
 				stm.setString(1, b);
 				ResultSet set = stm.executeQuery();
 								
